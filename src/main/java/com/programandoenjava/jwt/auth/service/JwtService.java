@@ -14,11 +14,11 @@ import java.util.Map;
 @Service
 public class JwtService {
 
-    @Value("${application.security.jwt.secret-key}")
+    @Value("${security.jwt.spring.secret-key}")
     private String secretKey;
-    @Value("${application.security.jwt.expiration}")
+    @Value("${security.jwt.spring.expiration}")
     private long jwtExpiration;
-    @Value("${application.security.jwt.refresh-token.expiration}")
+    @Value("${security.jwt.spring.refresh-token.expiration}")
     private long refreshExpiration;
 
     public String extractUsername(String token) {

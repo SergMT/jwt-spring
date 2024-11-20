@@ -7,14 +7,19 @@ import com.programandoenjava.jwt.auth.repository.Token;
 import com.programandoenjava.jwt.auth.repository.TokenRepository;
 import com.programandoenjava.jwt.user.User;
 import com.programandoenjava.jwt.user.UserRepository;
+
 import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+
 
 @Service
 @RequiredArgsConstructor
@@ -24,6 +29,8 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
+    
+    Logger logger = LoggerFactory.getLogger(AuthService.class);
 
     public TokenResponse register(final RegisterRequest request) {
         final User user = User.builder()
@@ -80,24 +87,37 @@ public class AuthService {
 
     public TokenResponse refreshToken(@NotNull final String authentication) {
 
+        logger.info("Entra a refreshToken: {}", authentication);
+
         if (authentication == null || !authentication.startsWith("Bearer ")) {
+            
+            logger.info("Error: Authentication");
             throw new IllegalArgumentException("Invalid auth header");
         }
-        final String refreshToken = authentication.substring(7);
+
+        final String refreshToken = authentication.substring(7).trim();
+        logger.info("Extracted Token: {}", refreshToken);
+
+
         final String userEmail = jwtService.extractUsername(refreshToken);
+        
         if (userEmail == null) {
+            System.out.println("Error: email null");
             return null;
         }
 
         final User user = this.repository.findByEmail(userEmail).orElseThrow();
         final boolean isTokenValid = jwtService.isTokenValid(refreshToken, user);
         if (!isTokenValid) {
+            System.out.println("Error: token no valido");
             return null;
         }
 
         final String accessToken = jwtService.generateRefreshToken(user);
         revokeAllUserTokens(user);
         saveUserToken(user, accessToken);
+
+        System.out.println("Regresa el tokenResponse");
 
         return new TokenResponse(accessToken, refreshToken);
     }
