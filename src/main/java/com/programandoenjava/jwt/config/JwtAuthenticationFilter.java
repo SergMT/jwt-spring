@@ -38,7 +38,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             @NonNull HttpServletResponse response,
             @NonNull FilterChain filterChain
     ) throws ServletException, IOException {
-        if (request.getServletPath().contains("/api/v1/auth")) {
+        if (request.getServletPath().contains("/auth")) {
             filterChain.doFilter(request, response);
             return;
         }
@@ -56,32 +56,54 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             filterChain.doFilter(request, response);
             return;
         }
-
+        
         final UserDetails userDetails = this.userDetailsService.loadUserByUsername(userEmail);
-        final boolean isTokenExpiredOrRevoked = tokenRepository.findByToken(jwt)
-                .map(token -> !token.getIsExpired() && !token.getIsRevoked())
-                .orElse(false);
+        
+        final boolean isTokenValid = tokenRepository.findByToken(jwt)
+            .map(token -> !token.getIsExpired() && !token.getIsRevoked())
+            .orElse(false);
 
-
-        if (isTokenExpiredOrRevoked) {
+        if (isTokenValid) {
             final Optional<User> user = userRepository.findByEmail(userEmail);
 
-            if (user.isPresent()) {
-                final boolean isTokenValid = jwtService.isTokenValid(jwt, user.get());
-
-                if (isTokenValid) {
-                    UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
-                            userDetails,
-                            null,
-                            userDetails.getAuthorities()
-                    );
-                    authToken.setDetails(
-                            new WebAuthenticationDetailsSource().buildDetails(request)
-                    );
-                    SecurityContextHolder.getContext().setAuthentication(authToken);
-                }
+            if (user.isPresent() && jwtService.isTokenValid(jwt, user.get())) {
+                UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
+                        userDetails,
+                        null,
+                        userDetails.getAuthorities()
+                );
+                authToken.setDetails(
+                        new WebAuthenticationDetailsSource().buildDetails(request)
+                );
+                SecurityContextHolder.getContext().setAuthentication(authToken);
             }
         }
+
+
+        // final boolean isTokenExpiredOrRevoked = tokenRepository.findByToken(jwt)
+        //         .map(token -> !token.getIsExpired() && !token.getIsRevoked())
+        //         .orElse(false);
+
+
+        // if (isTokenExpiredOrRevoked) {
+        //     final Optional<User> user = userRepository.findByEmail(userEmail);
+
+        //     if (user.isPresent()) {
+        //         final boolean isTokenValid = jwtService.isTokenValid(jwt, user.get());
+
+        //         if (isTokenValid) {
+        //             UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
+        //                     userDetails,
+        //                     null,
+        //                     userDetails.getAuthorities()
+        //             );
+        //             authToken.setDetails(
+        //                     new WebAuthenticationDetailsSource().buildDetails(request)
+        //             );
+        //             SecurityContextHolder.getContext().setAuthentication(authToken);
+        //         }
+        //     }
+        // }
 
         filterChain.doFilter(request, response);
     }

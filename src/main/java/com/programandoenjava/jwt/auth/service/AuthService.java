@@ -87,37 +87,28 @@ public class AuthService {
 
     public TokenResponse refreshToken(@NotNull final String authentication) {
 
-        logger.info("Entra a refreshToken: {}", authentication);
-
         if (authentication == null || !authentication.startsWith("Bearer ")) {
             
-            logger.info("Error: Authentication");
             throw new IllegalArgumentException("Invalid auth header");
         }
 
         final String refreshToken = authentication.substring(7).trim();
-        logger.info("Extracted Token: {}", refreshToken);
-
-
         final String userEmail = jwtService.extractUsername(refreshToken);
         
         if (userEmail == null) {
-            System.out.println("Error: email null");
             return null;
         }
 
         final User user = this.repository.findByEmail(userEmail).orElseThrow();
         final boolean isTokenValid = jwtService.isTokenValid(refreshToken, user);
+        
         if (!isTokenValid) {
-            System.out.println("Error: token no valido");
             return null;
         }
 
         final String accessToken = jwtService.generateRefreshToken(user);
         revokeAllUserTokens(user);
         saveUserToken(user, accessToken);
-
-        System.out.println("Regresa el tokenResponse");
 
         return new TokenResponse(accessToken, refreshToken);
     }

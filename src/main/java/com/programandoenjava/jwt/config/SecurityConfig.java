@@ -5,6 +5,9 @@ import com.programandoenjava.jwt.auth.repository.TokenRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpHeaders;
@@ -20,6 +23,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 
 import static org.springframework.security.config.http.SessionCreationPolicy.STATELESS;
 
+
 @Configuration
 @EnableWebSecurity
 @RequiredArgsConstructor
@@ -29,6 +33,8 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthFilter;
     private final AuthenticationProvider authenticationProvider;
     private final TokenRepository tokenRepository;
+
+    Logger logger = LoggerFactory.getLogger(SecurityConfig.class);
 
     @Bean
     public SecurityFilterChain securityFilterChain(final HttpSecurity http) throws Exception {
@@ -54,23 +60,59 @@ public class SecurityConfig {
     }
 
     private void logout(
-            final HttpServletRequest request, final HttpServletResponse response,
-            final Authentication authentication
-    ) {
+        final HttpServletRequest request, final HttpServletResponse response,
+        final Authentication authentication
+) {
+    logger.info("Entering logout handler...");
+    final String authHeader = request.getHeader(HttpHeaders.AUTHORIZATION);
+    logger.info("Authorization Header: {}", authHeader);
 
-        final String authHeader = request.getHeader(HttpHeaders.AUTHORIZATION);
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            return;
-        }
-
-        final String jwt = authHeader.substring(7);
-        final Token storedToken = tokenRepository.findByToken(jwt)
-                .orElse(null);
-        if (storedToken != null) {
-            storedToken.setIsExpired(true);
-            storedToken.setIsRevoked(true);
-            tokenRepository.save(storedToken);
-            SecurityContextHolder.clearContext();
-        }
+    if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+        logger.info("Missing or invalid Authorization header");
+        return;
     }
+
+    final String jwt = authHeader.substring(7);
+    logger.info("JWT extracted: {}", jwt);
+    
+    final Token storedToken = tokenRepository.findByToken(jwt).orElse(null);
+    if (storedToken != null) {
+        logger.info("Marking token as expired and revoked");
+        storedToken.setIsExpired(true);
+        storedToken.setIsRevoked(true);
+        tokenRepository.save(storedToken);
+        logger.info("Token updated in database");
+    } else {
+        logger.info("Token not found in database");
+    }
+
+    SecurityContextHolder.clearContext();
+}
+
+
+    // private void logout(
+    //         final HttpServletRequest request, final HttpServletResponse response,
+    //         final Authentication authentication
+    // ) {
+        
+    //     logger.info("Entra a logout");
+    //     logger.info("Request: {}", request);
+    //     logger.info("Response: {}", response);
+    //     logger.info("Authentication: {}", authentication);
+
+    //     final String authHeader = request.getHeader(HttpHeaders.AUTHORIZATION);
+    //     if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+    //         return;
+    //     }
+
+    //     final String jwt = authHeader.substring(7);
+    //     final Token storedToken = tokenRepository.findByToken(jwt)
+    //             .orElse(null);
+    //     if (storedToken != null) {
+    //         storedToken.setIsExpired(true);
+    //         storedToken.setIsRevoked(true);
+    //         tokenRepository.save(storedToken);
+    //         SecurityContextHolder.clearContext();
+    //     }
+    // }
 }
