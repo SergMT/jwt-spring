@@ -9,6 +9,9 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -32,27 +35,41 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final TokenRepository tokenRepository;
     private final UserRepository userRepository;
 
+    Logger logger = LoggerFactory.getLogger(JwtAuthenticationFilter.class);
+
     @Override
     protected void doFilterInternal(
             @NonNull HttpServletRequest request,
             @NonNull HttpServletResponse response,
             @NonNull FilterChain filterChain
+
     ) throws ServletException, IOException {
+
+        logger.info("Entra a doFilterInternal");
+        logger.info("Processing request: {}", request.getServletPath());
+
         if (request.getServletPath().contains("/auth")) {
             filterChain.doFilter(request, response);
             return;
         }
 
         final String authHeader = request.getHeader(HttpHeaders.AUTHORIZATION);
+        logger.info("Authorization Header: {}", authHeader);
+
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            logger.info("Missing or invalid Authorization header");
             filterChain.doFilter(request, response);
             return;
         }
 
         final String jwt = authHeader.substring(7);
+        logger.info("JWT Token extracted: {}", jwt);
+
         final String userEmail = jwtService.extractUsername(jwt);
         final Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        
         if (userEmail == null || authentication != null) {
+            logger.warn("Invalid JWT or already authenticated");
             filterChain.doFilter(request, response);
             return;
         }
@@ -72,10 +89,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                         null,
                         userDetails.getAuthorities()
                 );
+                
                 authToken.setDetails(
                         new WebAuthenticationDetailsSource().buildDetails(request)
                 );
+                
                 SecurityContextHolder.getContext().setAuthentication(authToken);
+                logger.info("Authentication successful for user: {}", userEmail);
+
+            }else{
+                logger.warn("Invalid token for user: {}", userEmail);
             }
         }
 
