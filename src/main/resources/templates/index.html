@@ -3,12 +3,20 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>JWT Authentication</title>
+  <title>Bienvenida</title>
   <script src="./js/index.js" defer></script>
+  <script src="./js/logout.js" defer></script>
 </head>
 <body>
-  <h1>WELOCME !!!</h1>
+  <h1>Bienvenido !!!</h1>
 
+  <button onclick="consultarUsuarios()">Consultar Usuarios</button>
+  
+  <select id="userSelect">
+    <option value="">Seleccionar...</option>
+  </select>
+
+  <button id="logout-button" onclick="logout()">Cerrar sesión</button>
 
 </body>
 </html>

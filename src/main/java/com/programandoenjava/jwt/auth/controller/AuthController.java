@@ -2,7 +2,10 @@ package com.programandoenjava.jwt.auth.controller;
 
 import com.programandoenjava.jwt.auth.service.AuthService;
 
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+
+import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,10 +29,25 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<TokenResponse> authenticate(@RequestBody AuthRequest request) {
+    public ResponseEntity<Map<String, String>> authenticate(@RequestBody AuthRequest request,
+        HttpServletResponse response) {
+        
         logger.info("Authentication: {}", request);
-        final TokenResponse response = service.authenticate(request);
-        return ResponseEntity.ok(response);
+        final TokenResponse tokenResponse = service.authenticate(request);
+
+        // Add the JWT cookie to the HTTP response
+        response.addCookie(tokenResponse.jwtCookie());
+
+        // Prepare a map to return only the tokens (without the cookie)
+        Map<String, String> responseBody = Map.of(
+            "access_token", tokenResponse.accessToken(),
+            "refresh_token", tokenResponse.refreshToken()
+        );
+
+        // Return the tokens in the response body
+        return ResponseEntity.ok(responseBody);
+
+        //return ResponseEntity.ok(response);
     }
 
     @PostMapping("/refresh-token")

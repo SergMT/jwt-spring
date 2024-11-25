@@ -1,3 +1,28 @@
+const API_BASE_URL = 'http://localhost:8080';
+
+async function consultarUsuarios() {
+
+    // Replace 'your_api_endpoint' with your actual API endpoint
+    const apiUrl = 'your_api_endpoint';
+
+    $.ajax({
+        url: apiUrl,
+        type: 'GET',
+        success: function(response) {
+            const users = response.data; // Assuming your API returns data in a 'data' property
+
+            users.forEach(user => {
+                $('#userSelect').append(`<option value="${user.id}">${user.name}</option>`);
+            });
+        },
+        error: function(error) {
+            console.error('Error fetching users:', error);
+        }
+    });
+}
+
+
+
 // console.log("cargando index.html");
 
 // const API_BASE_URL = 'http://localhost:8080';

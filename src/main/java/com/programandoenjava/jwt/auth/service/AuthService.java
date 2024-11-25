@@ -8,6 +8,7 @@ import com.programandoenjava.jwt.auth.repository.TokenRepository;
 import com.programandoenjava.jwt.user.User;
 import com.programandoenjava.jwt.user.UserRepository;
 
+import jakarta.servlet.http.Cookie;
 import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 
@@ -44,23 +45,35 @@ public class AuthService {
         final String refreshToken = jwtService.generateRefreshToken(savedUser);
 
         saveUserToken(savedUser, jwtToken);
-        return new TokenResponse(jwtToken, refreshToken);
+        return new TokenResponse(jwtToken, refreshToken, null);
     }
 
     public TokenResponse authenticate(final AuthRequest request) {
         authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(
-                        request.email(),
-                        request.password()
-                )
+            new UsernamePasswordAuthenticationToken(
+                    request.email(),
+                    request.password()
+            )
         );
         final User user = repository.findByEmail(request.email())
                 .orElseThrow();
         final String accessToken = jwtService.generateToken(user);
         final String refreshToken = jwtService.generateRefreshToken(user);
+
         revokeAllUserTokens(user);
         saveUserToken(user, accessToken);
-        return new TokenResponse(accessToken, refreshToken);
+
+        return new TokenResponse(accessToken, refreshToken, createJwtCookie(accessToken));
+    }
+
+    public Cookie createJwtCookie(String token) {
+        Cookie jwtCookie = new Cookie("jwt", token);
+        jwtCookie.setHttpOnly(true);
+        jwtCookie.setSecure(false); // Set to true in production with HTTPS
+        jwtCookie.setPath("/"); // Cookie accessible across the application
+        //jwtCookie.setMaxAge(24 * 60 * 60); // Expires in 1 day
+        jwtCookie.setMaxAge(60); // Expires in 2 minutes
+        return jwtCookie;
     }
 
     private void saveUserToken(User user, String jwtToken) {
@@ -110,6 +123,6 @@ public class AuthService {
         revokeAllUserTokens(user);
         saveUserToken(user, accessToken);
 
-        return new TokenResponse(accessToken, refreshToken);
+        return new TokenResponse(accessToken, refreshToken, null);
     }
 }

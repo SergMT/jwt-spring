@@ -6,6 +6,7 @@ import com.programandoenjava.jwt.user.User;
 import com.programandoenjava.jwt.user.UserRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -42,40 +43,33 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             @NonNull HttpServletRequest request,
             @NonNull HttpServletResponse response,
             @NonNull FilterChain filterChain
-
     ) throws ServletException, IOException {
 
         logger.info("Entra a doFilterInternal");
         logger.info("Processing request: {}", request.getServletPath());
 
-        if (request.getServletPath().contains("/auth")) {
+        // Extract token from Authorization header or cookies
+        final String jwt = extractJwtFromRequest(request);
+
+        if (jwt == null) {
+            logger.info("Missing JWT token in Authorization header or cookies");
             filterChain.doFilter(request, response);
             return;
         }
 
-        final String authHeader = request.getHeader(HttpHeaders.AUTHORIZATION);
-        logger.info("Authorization Header: {}", authHeader);
-
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            logger.info("Missing or invalid Authorization header");
-            filterChain.doFilter(request, response);
-            return;
-        }
-
-        final String jwt = authHeader.substring(7);
         logger.info("JWT Token extracted: {}", jwt);
 
         final String userEmail = jwtService.extractUsername(jwt);
         final Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        
+
         if (userEmail == null || authentication != null) {
             logger.warn("Invalid JWT or already authenticated");
             filterChain.doFilter(request, response);
             return;
         }
-        
+
         final UserDetails userDetails = this.userDetailsService.loadUserByUsername(userEmail);
-        
+
         final boolean isTokenValid = tokenRepository.findByToken(jwt)
             .map(token -> !token.getIsExpired() && !token.getIsRevoked())
             .orElse(false);
@@ -89,45 +83,44 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                         null,
                         userDetails.getAuthorities()
                 );
-                
+
                 authToken.setDetails(
                         new WebAuthenticationDetailsSource().buildDetails(request)
                 );
-                
+
                 SecurityContextHolder.getContext().setAuthentication(authToken);
                 logger.info("Authentication successful for user: {}", userEmail);
-
-            }else{
+            } else {
                 logger.warn("Invalid token for user: {}", userEmail);
             }
         }
 
-
-        // final boolean isTokenExpiredOrRevoked = tokenRepository.findByToken(jwt)
-        //         .map(token -> !token.getIsExpired() && !token.getIsRevoked())
-        //         .orElse(false);
-
-
-        // if (isTokenExpiredOrRevoked) {
-        //     final Optional<User> user = userRepository.findByEmail(userEmail);
-
-        //     if (user.isPresent()) {
-        //         final boolean isTokenValid = jwtService.isTokenValid(jwt, user.get());
-
-        //         if (isTokenValid) {
-        //             UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
-        //                     userDetails,
-        //                     null,
-        //                     userDetails.getAuthorities()
-        //             );
-        //             authToken.setDetails(
-        //                     new WebAuthenticationDetailsSource().buildDetails(request)
-        //             );
-        //             SecurityContextHolder.getContext().setAuthentication(authToken);
-        //         }
-        //     }
-        // }
-
         filterChain.doFilter(request, response);
     }
+
+    /**
+     * Extracts JWT token from the Authorization header or cookies.
+     *
+     * @param request HttpServletRequest
+     * @return The extracted JWT token or null if none is found.
+     */
+    private String extractJwtFromRequest(HttpServletRequest request) {
+        // Check Authorization header first
+        final String authHeader = request.getHeader(HttpHeaders.AUTHORIZATION);
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            return authHeader.substring(7);
+        }
+
+        // Fallback to checking cookies
+        if (request.getCookies() != null) {
+            for (Cookie cookie : request.getCookies()) {
+                if ("jwt".equals(cookie.getName())) {
+                    return cookie.getValue();
+                }
+            }
+        }
+
+        return null; // No JWT found
+    }
 }
+

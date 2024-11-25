@@ -2,6 +2,8 @@ package com.programandoenjava.jwt.config;
 
 import com.programandoenjava.jwt.auth.repository.Token;
 import com.programandoenjava.jwt.auth.repository.TokenRepository;
+
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -50,68 +52,70 @@ public class SecurityConfig {
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
                 .logout(logout ->
                         logout.logoutUrl("/auth/logout")
-                                .addLogoutHandler(this::logout)
-                                .logoutSuccessHandler((request, response, authentication) -> SecurityContextHolder.clearContext())
-                )
-        ;
+                        .addLogoutHandler(this::logout)
+                        .logoutSuccessHandler((request, response, authentication) -> {
+                            logger.info("Logout successful");
+                            SecurityContextHolder.clearContext();
+                }));
 
         return http.build();
     }
 
     private void logout(
-        final HttpServletRequest request, final HttpServletResponse response,
-        final Authentication authentication
-) {
-    logger.info("Entering logout handler...");
-    final String authHeader = request.getHeader(HttpHeaders.AUTHORIZATION);
-    logger.info("Authorization Header: {}", authHeader);
+        final HttpServletRequest request,
+        final HttpServletResponse response,
+        final Authentication authentication) {
 
-    if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-        logger.info("Missing or invalid Authorization header");
-        return;
-    }
+        logger.info("Entering logout handler...");
 
-    final String jwt = authHeader.substring(7);
-    logger.info("JWT extracted: {}", jwt);
-    
-    final Token storedToken = tokenRepository.findByToken(jwt).orElse(null);
-    if (storedToken != null) {
-        logger.info("Marking token as expired and revoked");
-        storedToken.setIsExpired(true);
-        storedToken.setIsRevoked(true);
-        tokenRepository.save(storedToken);
-        logger.info("Token updated in database");
-    } else {
-        logger.info("Token not found in database");
-    }
+        // Extract JWT from cookies
+        final Cookie[] cookies = request.getCookies();
+        if (cookies == null) {
+            logger.info("No cookies found in request");
+            return;
+        }
 
-    SecurityContextHolder.clearContext();
-}
+        String jwt = null;
+        for (Cookie cookie : cookies) {
+            if ("jwt".equals(cookie.getName())) {
+                jwt = cookie.getValue();
+                break;
+            }
+        }
 
+        if (jwt == null) {
+            logger.info("JWT not found in cookies");
+            return;
+        }
 
-    // private void logout(
-    //         final HttpServletRequest request, final HttpServletResponse response,
-    //         final Authentication authentication
-    // ) {
+        logger.info("JWT extracted from cookie: {}", jwt);
+
+        // Revoke the token in the database
+        final Token storedToken = tokenRepository.findByToken(jwt).orElse(null);
         
-    //     logger.info("Entra a logout");
-    //     logger.info("Request: {}", request);
-    //     logger.info("Response: {}", response);
-    //     logger.info("Authentication: {}", authentication);
+        if (storedToken != null) {
+            
+            logger.info("Marking token as expired and revoked");
+            storedToken.setIsExpired(true);
+            storedToken.setIsRevoked(true);
+            tokenRepository.save(storedToken);
+            logger.info("Token updated in database");
 
-    //     final String authHeader = request.getHeader(HttpHeaders.AUTHORIZATION);
-    //     if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-    //         return;
-    //     }
+        } else {
+            logger.info("Token not found in database");
+        }
 
-    //     final String jwt = authHeader.substring(7);
-    //     final Token storedToken = tokenRepository.findByToken(jwt)
-    //             .orElse(null);
-    //     if (storedToken != null) {
-    //         storedToken.setIsExpired(true);
-    //         storedToken.setIsRevoked(true);
-    //         tokenRepository.save(storedToken);
-    //         SecurityContextHolder.clearContext();
-    //     }
-    // }
+        // Remove the JWT cookie
+        logger.info("Removing JWT cookie");
+        Cookie cookie = new Cookie("jwt", null);
+        cookie.setHttpOnly(true);
+        cookie.setSecure(false); // Set this to true in production
+        cookie.setPath("/");
+        cookie.setMaxAge(0); // Marks the cookie for deletion
+        response.addCookie(cookie);
+
+        SecurityContextHolder.clearContext();
+    }
+
+
 }
