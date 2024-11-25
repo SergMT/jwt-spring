@@ -49,17 +49,16 @@ async function login(){
         // Handle HTTP errors
         throw new Error(`HTTP error! Status: ${response.status}`);
       }
-      
-      console.log('Response: ' + response)
 
-      window.location.href = url;
-      // Parse and return JSON response
-    //   const data = await response.json();
-    //   return data;
-
+      // Render the content in the same page
+      const html = await response.text();
+      document.body.innerHTML = html; // Load the new content
+    
     } catch (error) {
-      console.error('Error fetching data:', error);
-      throw error; // Re-throw error for higher-level handling
+      
+      console.error('Error fetching /index:', error);
+      alert('No tiene autorización. Redirigiendo a login...');
+      window.location.href = '/'; // Redirect to login on error
     }
   }
   
