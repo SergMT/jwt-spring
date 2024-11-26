@@ -4,16 +4,16 @@ import com.programandoenjava.jwt.auth.repository.TokenRepository;
 import com.programandoenjava.jwt.auth.service.JwtService;
 import com.programandoenjava.jwt.user.User;
 import com.programandoenjava.jwt.user.UserRepository;
+import com.programandoenjava.jwt.util.JwtUtil;
+
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
-import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.http.HttpHeaders;
 import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -45,16 +45,23 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             @NonNull FilterChain filterChain
     ) throws ServletException, IOException {
 
-        logger.info("Entra a doFilterInternal");
-        logger.info("Processing request: {}", request.getServletPath());
+        String requestPath = request.getServletPath();
+        logger.info("Processing request: {}", requestPath);
 
-        // Extract token from Authorization header or cookies
-        final String jwt = extractJwtFromRequest(request);
-
-        if (jwt == null) {
-            logger.info("Missing JWT token in Authorization header or cookies");
+        // Allow public routes to proceed without checking for JWT
+        if (isPublicRoute(requestPath)) {
+            logger.info("Public route accessed: {}", requestPath);
             filterChain.doFilter(request, response);
             return;
+        }
+
+        // Extract token using JwtUtil
+        final String jwt = JwtUtil.extractJwtFromRequest(request);
+
+        if (jwt == null) {
+            logger.warn("JWT token not found in the request. Redirecting to login page.");
+            response.sendRedirect("/?message=sessionExpired");
+            return; // Stop further processing
         }
 
         logger.info("JWT Token extracted: {}", jwt);
@@ -93,34 +100,26 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             } else {
                 logger.warn("Invalid token for user: {}", userEmail);
             }
+        } else {
+            logger.warn("Token is expired or revoked. Redirecting to login page.");
+            response.sendRedirect("/?message=sessionExpired");
+            return; // Stop further processing
         }
 
         filterChain.doFilter(request, response);
     }
 
     /**
-     * Extracts JWT token from the Authorization header or cookies.
+     * Checks if the requested route is public (accessible without authentication).
      *
-     * @param request HttpServletRequest
-     * @return The extracted JWT token or null if none is found.
+     * @param requestPath The path of the incoming request.
+     * @return true if the route is public, false otherwise.
      */
-    private String extractJwtFromRequest(HttpServletRequest request) {
-        // Check Authorization header first
-        final String authHeader = request.getHeader(HttpHeaders.AUTHORIZATION);
-        if (authHeader != null && authHeader.startsWith("Bearer ")) {
-            return authHeader.substring(7);
-        }
-
-        // Fallback to checking cookies
-        if (request.getCookies() != null) {
-            for (Cookie cookie : request.getCookies()) {
-                if ("jwt".equals(cookie.getName())) {
-                    return cookie.getValue();
-                }
-            }
-        }
-
-        return null; // No JWT found
+    private boolean isPublicRoute(String requestPath) {
+        return requestPath.equals("/") || requestPath.startsWith("/auth/") || 
+               requestPath.startsWith("/css/") || requestPath.startsWith("/js/") ||
+               requestPath.startsWith("/images/");
     }
+
 }
 

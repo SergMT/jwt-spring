@@ -14,6 +14,11 @@
         "name": "security.jwt.spring.refresh-token.expiration",
         "type": "java.lang.Long",
         "description": "The expiration time of the refresh tokens in milliseconds."
+      },
+      {
+        "name": "security.jwt.spring.cookie-max-age",
+        "type": "java.lang.Long",
+        "description": "The expiration time of the cookie in seconds."
       }
     ]
   }

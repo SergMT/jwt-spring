@@ -5,7 +5,7 @@ async function logout() {
         const response = await fetch(`${API_BASE_URL}/auth/logout`, {
             method: 'POST', // Logout uses POST as per convention
             headers: { 'Content-Type': 'application/json' },
-            //credentials: 'include' // Ensure cookies are sent with the request
+            credentials: 'include' // Ensure cookies are sent with the request
         });
 
         if (response.ok) {

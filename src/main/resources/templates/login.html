@@ -16,5 +16,19 @@
         <br>
         <button type="button" onclick="login()">Login</button>
     </form>
+
+    <div id="error-message" style="color: red; font-weight: bold;"></div>
+    
+    <script>
+        // Check for the "message" parameter in the URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const message = urlParams.get('message');
+    
+        if (message === 'sessionExpired') {
+            document.getElementById('error-message').innerText = 
+                'Su sesión ha expirado, favor de iniciar sesión nuevamente.';
+        }
+    </script>
+    
 </body>
 </html>

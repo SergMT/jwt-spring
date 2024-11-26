@@ -14,6 +14,7 @@ import lombok.RequiredArgsConstructor;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -30,6 +31,9 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
+
+    @Value("${security.jwt.spring.cookie-max-age}")
+    private int cookieMaxAge;
     
     Logger logger = LoggerFactory.getLogger(AuthService.class);
 
@@ -72,7 +76,7 @@ public class AuthService {
         jwtCookie.setSecure(false); // Set to true in production with HTTPS
         jwtCookie.setPath("/"); // Cookie accessible across the application
         //jwtCookie.setMaxAge(24 * 60 * 60); // Expires in 1 day
-        jwtCookie.setMaxAge(60); // Expires in 2 minutes
+        jwtCookie.setMaxAge(cookieMaxAge); // Expires in 2 minutes
         return jwtCookie;
     }
 

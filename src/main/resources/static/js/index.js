@@ -2,23 +2,24 @@ const API_BASE_URL = 'http://localhost:8080';
 
 async function consultarUsuarios() {
 
-    // Replace 'your_api_endpoint' with your actual API endpoint
-    const apiUrl = 'your_api_endpoint';
+    const apiUrl = '/users';
 
-    $.ajax({
-        url: apiUrl,
-        type: 'GET',
-        success: function(response) {
-            const users = response.data; // Assuming your API returns data in a 'data' property
+    try {
+        const response = await fetch(apiUrl);
+        const data = await response.json();
+        const users = data.data; // Assuming your API returns data in a 'data' property
 
-            users.forEach(user => {
-                $('#userSelect').append(`<option value="${user.id}">${user.name}</option>`);
-            });
-        },
-        error: function(error) {
-            console.error('Error fetching users:', error);
-        }
-    });
+        users.forEach(user => {
+            const option = document.createElement('option');
+            option.value = user.id;
+            option.text = user.name;
+            document.getElementById('userSelect').appendChild(option);
+        });
+    } catch (error) {
+        console.error('Error fetching users:', error);
+    }
+
+
 }
 
 

@@ -4,6 +4,7 @@ import com.programandoenjava.jwt.user.User;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -20,6 +21,9 @@ public class JwtService {
     private long jwtExpiration;
     @Value("${security.jwt.spring.refresh-token.expiration}")
     private long refreshExpiration;
+    @Value("${security.jwt.spring.cookie-max-age}")
+    private int cookieMaxAge;
+
 
     public String extractUsername(String token) {
         return Jwts.parser()
@@ -39,12 +43,18 @@ public class JwtService {
     }
 
     private String buildToken(final User user, final long expiration) {
+
+        // Set expiration time based on the cookieMaxAge property
+        long expirationTimeMillis = System.currentTimeMillis() + (cookieMaxAge * 1000L); // Convert seconds to milliseconds
+        Date expirationDate = new Date(expirationTimeMillis);
+
         return Jwts
                 .builder()
                 .claims(Map.of("name", user.getName()))
                 .subject(user.getEmail())
                 .issuedAt(new Date(System.currentTimeMillis()))
-                .expiration(new Date(System.currentTimeMillis() + expiration))
+                //.expiration(new Date(System.currentTimeMillis() + expiration))
+                .expiration(expirationDate)
                 .signWith(getSignInKey())
                 .compact();
     }

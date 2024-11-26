@@ -12,7 +12,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.HttpHeaders;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -68,7 +67,7 @@ public class SecurityConfig {
 
         logger.info("Entering logout handler...");
 
-        // Extract JWT from cookies
+        // Extract JWT token from cookies
         final Cookie[] cookies = request.getCookies();
         if (cookies == null) {
             logger.info("No cookies found in request");
@@ -84,7 +83,7 @@ public class SecurityConfig {
         }
 
         if (jwt == null) {
-            logger.info("JWT not found in cookies");
+            logger.info("JWT token not found in cookies");
             return;
         }
 
@@ -116,6 +115,5 @@ public class SecurityConfig {
 
         SecurityContextHolder.clearContext();
     }
-
 
 }
